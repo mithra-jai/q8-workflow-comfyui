@@ -1,26 +1,71 @@
-# Use an official lightweight Python image
-FROM python:3.10-slim
+# Stage 1: Base image with common dependencies
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as base
 
-# Install system dependencies if required
+# Prevents prompts from packages asking for user input during installation
+ENV DEBIAN_FRONTEND=noninteractive
+# Prefer binary wheels over source distributions for faster pip installations
+ENV PIP_PREFER_BINARY=1
+# Ensures output from python is printed immediately to the terminal without buffering
+ENV PYTHONUNBUFFERED=1 
+
+# Install Python, git and other necessary tools
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
-    && rm -rf /var/lib/apt/lists/*
+    python3.10 \
+    python3-pip \
+    git \
+    wget
 
-# Set the working directory in the container
-WORKDIR q8-workflow-comfyui
+# Clean up to reduce image size
+RUN apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
-# Copy the already cloned/extracted repository files into the container
-COPY . /q8-workflow-comfyui
 
-# Install Python dependencies (requirements.txt is in the root of the project)
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /q8-workflow-comfyui/requirements.txt
+# Change working directory to ComfyUI
+WORKDIR /q8-workflow-comfyui
 
-# Change to the directory containing the app
-WORKDIR q8-workflow-comfyui/app
+# Install ComfyUI dependencies
+RUN pip3 install --upgrade --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 \
+    && pip3 install --upgrade -r requirements.txt
 
-# Expose the port your application runs on (adjust if necessary)
-EXPOSE 8188
+# Install runpod
+RUN pip3 install runpod requests
 
-# Define the command to run the application
-CMD ["python", "main.py"]
+# Add custom nodes directly
+RUN mkdir -p /q8-workflow-comfyui/custom_nodes && \
+    git clone https://github.com/example/ComfyUI-GGUF.git /q8-workflow-comfyui/custom_nodes/ComfyUI-GGUF && \
+    git clone https://github.com/example/ComfyUI-Manager.git /q8-workflow-comfyui/custom_nodes/ComfyUI-Manager && \
+    git clone https://github.com/example/ComfyUI_bitsandbytes_NF4.git /q8-workflow-comfyui/custom_nodes/ComfyUI_bitsandbytes_NF4 && \
+    git clone https://github.com/example/rgthree-comfy.git /q8-workflow-comfyui/custom_nodes/rgthree-comfy && \
+    wget -O /q8-workflow-comfyui/custom_nodes/example_node.py https://raw.githubusercontent.com/example/example_node.py.example
+
+# Support for models directory
+RUN mkdir -p /q8-workflow-comfyui/models/checkpoints /q8-workflow-comfyui/models/clip /q8-workflow-comfyui/models/lora /q8-workflow-comfyui/models/vae /q8-workflow-comfyui/models/unet /q8-workflow-comfyui/models/text_encoders
+
+# Add the start script and handler
+ADD src/start.sh src/rp_handler.py  ./
+RUN chmod +x /start.sh
+
+# Stage 2: Download models
+FROM base as downloader
+
+# Change working directory to ComfyUI
+WORKDIR /q8-workflow-comfyui
+
+# Download all models
+RUN wget -O models/checkpoints/flux1-dev-bnb-nf4-v2.safetensors https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev-bnb-nf4-v2.safetensors && \
+    wget -O models/clip/ViT-L-14-TEXT-detail-improved-hiT-GmP-TE-only-HF.safetensors https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/ViT-L-14-TEXT-detail-improved-hiT-GmP-TE-only-HF.safetensors && \
+    wget -O models/clip/clip_l.safetensors https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors && \
+    wget -O models/clip/t5-v1_1-xxl-encoder-Q6_K.gguf https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5-v1_1-xxl-encoder-Q6_K.gguf && \
+    wget -O models/vae/ae.safetensors https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors && \
+    wget -O models/lora/Flux-1-dev-Turbo-Alpha.safetensors https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/Flux-1-dev-Turbo-Alpha.safetensors && \
+    wget -O models/text_encoders/t5xxl_fp8_e4m3fn.safetensors https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors && \
+    wget -O models/unet/flux-hyp8-Q8_0.gguf https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux-hyp8-Q8_0.gguf && \
+    wget -O models/unet/flux1-dev-fp8.safetensors https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev-fp8.safetensors
+
+# Stage 3: Final image
+FROM base as final
+
+# Copy models and custom nodes from downloader to final image
+COPY --from=downloader /q8-workflow-comfyui/models /q8-workflow-comfyui/models
+
+# Start the container
+CMD /start.sh
