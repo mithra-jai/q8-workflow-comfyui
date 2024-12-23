@@ -5,7 +5,7 @@ FROM python:3.10-slim
 WORKDIR /q8-workflow-comfyui/app
 
 # Copy application files
-COPY . /q8-workflow-comfyui//app
+COPY . /q8-workflow-comfyui/app
 
 # Install system dependencies if required (add any system libraries needed for your workflow)
 RUN apt-get update && apt-get install -y \
@@ -19,5 +19,5 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Expose the port your application runs on (adjust if necessary)
 EXPOSE 8188
 
-# Define the command to run the application (replace with your script/command)
+# Define the command to run the application
 CMD ["python", "main.py"]
