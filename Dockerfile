@@ -2,10 +2,10 @@
 FROM python:3.10-slim
 
 # Set the working directory in the container
-WORKDIR /app
+WORKDIR /q8-workflow-comfyui/app
 
 # Copy application files
-COPY . /app
+COPY . /q8-workflow-comfyui//app
 
 # Install system dependencies if required (add any system libraries needed for your workflow)
 RUN apt-get update && apt-get install -y \
