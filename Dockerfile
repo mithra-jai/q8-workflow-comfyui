@@ -68,4 +68,6 @@ FROM base as final
 COPY --from=downloader /q8-workflow-comfyui/models /q8-workflow-comfyui/models
 
 # Start the container
-CMD /start.sh
+
+CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188"]
+
