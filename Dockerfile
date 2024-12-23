@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y \
 # Clean up to reduce image size
 RUN apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
+# Clone ComfyUI repository
+RUN git clone https://github.com/mithra-jai/q8-workflow-comfyui.git /q8-workflow-comfyui
+
 
 # Change working directory to ComfyUI
 WORKDIR /app
