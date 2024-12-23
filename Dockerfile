@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
-WORKDIR /q8-workflow-comfyui
+WORKDIR q8-workflow-comfyui
 
 # Copy the already cloned/extracted repository files into the container
 COPY . /q8-workflow-comfyui
@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /q8-workflow-comfyui/requirements.txt
 
 # Change to the directory containing the app
-WORKDIR /q8-workflow-comfyui/app
+WORKDIR q8-workflow-comfyui/app
 
 # Expose the port your application runs on (adjust if necessary)
 EXPOSE 8188
