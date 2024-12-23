@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Clone the repository from GitHub
-RUN git clone https://github.com/mithra-jai/q8-workflow-comfyui.git /q8-workflow-comfyui
+RUN git clone https://github.com/mithra-jai/q8-workflow-comfyui.git .
 
 # Set the working directory to the app directory where the code is located
 WORKDIR /q8-workflow-comfyui/app
