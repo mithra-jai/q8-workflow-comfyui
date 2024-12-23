@@ -20,7 +20,7 @@ RUN apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 
 # Change working directory to ComfyUI
-WORKDIR /q8-workflow-comfyui
+WORKDIR /app
 
 # Install ComfyUI dependencies
 RUN pip3 install --upgrade --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 \
